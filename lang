@@ -1,0 +1,91 @@
+Terms:
+
+Lambda Calculus:
+
+note: The language will be completely type infered.
+
+x
+\x.E
+E E'
+
+Primitives:
+
+number
+bool
+string
+
+Syntax:
+
+<contents> = <content><contents>
+
+<content> = <string> | <p-expression>
+
+<p-expression> = {<expression>}
+
+<expression>
+  = <variable> 
+  | <lambda> 
+  | <letexpr>
+  | <application>
+  | <quoted-content>
+  | <primitive>
+  | (<expression>)
+
+<primitive> 
+  = <bools>
+  | <strings>
+  | <numbers>
+
+asdf asdf asdf 
+asdf {x = this is some content}
+asdf asdf {f = x => (g x) << h $ This is some content}
+asdf ;asdf ;askdjf ;asdfk jafa;sdfk ja;sf
+asdf asdf
+
+asdf;kj;safd 
+as;dfj {f $ x}
+
+<variable> = <varchars>
+
+<varchars> = <varchar><varchars>
+
+<varchar> = a - z | A - Z | _
+
+<lambda> = <variable> => <contents>
+
+<letexpr> = <variable> = <contents>
+
+<application> = <lambda> $ <contents>
+
+<strings> 
+  = <string>
+  | <string> <> <string>
+  | |<string>|
+
+<string> = <char><chars>
+
+<char> = any valid unicode character
+
+<bools>
+  = <bool>
+  | <bool> && <bool>
+  | <bool> || <bool>
+  | !<bool>
+
+<bool> = true | false
+
+<numbers> 
+  = <number>
+  | <number> + <number>
+  | <number> - <number>
+  | <number> * <number>
+  | <number> / <number>
+  | <number> ^ <number>
+
+<number> = <pos-number> | -<pos-number>
+
+<pos-number> = <digits>.<digits> | <digits>
+
+<digits> = <digit> | <digit><digits>
+
+<digit> = 0 | 1 | ... | 9
