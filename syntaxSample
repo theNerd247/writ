@@ -1,0 +1,81 @@
+Pattern Lambdas 
+================
+
+Pattern lambdas are used to define functions that produce
+similar content based on the content of some pre-existing
+content. They are "templates-on-the-go".
+
+{f = ... =>
+
+| This is a pattern declaration. This
+| extends the function's variables
+
+## {title = lorem ipsum}
+
+as;dfkja ;jasdf; kj;
+
+{reasons =
+  * asdf 
+  * asdf 
+  * asdf 
+  * asdf 
+}
+
+There are {|reasons|} examples in as;dkfj;asdf
+
+{numbered reasons}
+
+brings us to
+
+look at the first item in the list: {reaons.1}
+}
+
+===> 
+
+{f = title reasons => ...}
+{f $ lorem ipsum $ b[asdf, ...]}
+
+A smaller example is: 
+
+{f = ... => we are {attr = fun}}
+{f $ jazz}
+{f $ jar}
+{f $ pot}
+
+Function's Can Be Order-Called or Dict-Called
+=============================================
+
+{f = ... => ## {title = adf}\n\n {reasons = * adf; * asdf; * asdf; }}
+
+{f $ 
+
+this is areallllly long paragrphaa
+asdf;kajf
+as;dfj
+
+$
+
+* asdf
+* asdf
+* asdf
+
+}
+
+
+{f 
+
+$reasons$
+
+* asdf
+* asdf
+* asdf
+
+$title$
+
+this is areallllly long paragrphaa
+asdf;kajf
+as;dfj
+
+}
+
+is also valid

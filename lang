@@ -1,18 +1,51 @@
 Terms:
 
-Lambda Calculus:
+Notes:
 
-note: The language will be completely type infered.
+* The language will be completely type infered.
+* Strings in this language do not have quotes
+around them. This is because strings are the center piece of what users would
+write and so it would be annoying to have to keep track of quotes all the time.
+* Variables are limited to their nearest lambda otherwise
+  it is globally scoped.
 
-x
-\x.E
-E E'
+Key features:
 
-Primitives:
+* allow blending of content with logic definitions.
 
-number
-bool
-string
+For example: 
+
+```
+{ x =
+* adf 
+* adf
+* asdf
+}
+```
+would define: 
+
+```
+let x = [ "adf" "adf" "asdf" ]; in bullets x
+```
+
+This allows one to quickly capture the logic of some
+content without worrying about the rendering etc.
+
+Abstract Syntax Tree
+====================
+
+E 
+  = x
+  | \x : T.E
+  | \... : T'.E
+  | E E'
+  | letexpr x E
+  | number
+  | bool
+  | string
+
+T 
+  = TODO: define type language that enforces a non-turring completeness.
 
 Syntax:
 
@@ -24,26 +57,22 @@ Syntax:
 
 <expression>
   = <variable> 
-  | <lambda> 
+  | <lambdas> 
   | <letexpr>
   | <application>
   | <quoted-content>
   | <primitive>
   | (<expression>)
+  | <comment>
+
+<comment> = ^| <chars>
 
 <primitive> 
   = <bools>
   | <strings>
   | <numbers>
 
-asdf asdf asdf 
-asdf {x = this is some content}
-asdf asdf {f = x => (g x) << h $ This is some content}
-asdf ;asdf ;askdjf ;asdfk jafa;sdfk ja;sf
-asdf asdf
-
-asdf;kj;safd 
-as;dfj {f $ x}
+<pattern-decl> = <lambda-decl><patterned-content>
 
 <variable> = <varchars>
 
@@ -51,11 +80,21 @@ as;dfj {f $ x}
 
 <varchar> = a - z | A - Z | _
 
-<lambda> = <variable> => <contents>
+<lambdas>
+  = <lambda>
+  | <pattern-lambda>
 
-<letexpr> = <variable> = <contents>
+<pattern-lambda> = ... => <contents>
 
-<application> = <lambda> $ <contents>
+<lambda> = <variable> [<variable-decls>] => <contents>
+
+<variable-decls> = <variable> <variable-decls>
+
+<letexpr> = {<variable> = <contents>}
+
+<application>
+  = <contents> $ <contents>
+  | <contents> $<variable>$ <contents>
 
 <strings> 
   = <string>
