@@ -2,7 +2,8 @@ Terms:
 
 Notes:
 
-* The language will be completely type infered.
+* completely type infered.
+* turing incomplete
 * Strings in this language do not have quotes
 around them. This is because strings are the center piece of what users would
 write and so it would be annoying to have to keep track of quotes all the time.
@@ -12,6 +13,7 @@ write and so it would be annoying to have to keep track of quotes all the time.
 Key features:
 
 * allow blending of content with logic definitions.
+* template lambdas aka pattern lambdas
 
 For example: 
 
