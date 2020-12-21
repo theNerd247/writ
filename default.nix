@@ -8,7 +8,7 @@ let
               overrides = builtins.foldl' super.lib.composeExtensions (hOld.overrides or (_: _: {}))
                 [
                   (super.haskell.lib.packageSourceOverrides
-                    { hs-fresnel = builtins.fetchGit 
+                    { fresnel = builtins.fetchGit 
                         {
                           url = "https://github.com/frasertweedale/hs-fresnel.git";
                           rev = "a141d92f9f69bd155060af76d040ac86111ef826";
