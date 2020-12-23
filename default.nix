@@ -7,14 +7,18 @@ let
             (hOld: {
               overrides = builtins.foldl' super.lib.composeExtensions (hOld.overrides or (_: _: {}))
                 [
-                  (super.haskell.lib.packageSourceOverrides
-                    { fresnel = builtins.fetchGit 
-                        {
-                          url = "https://github.com/frasertweedale/hs-fresnel.git";
-                          rev = "a141d92f9f69bd155060af76d040ac86111ef826";
-                        };
-                    }
-                  )
+                  (hself: hsuper: { unparse-attoparsec = with self.haskell.lib;
+                    (x: doJailbreak (dontCheck x))
+                      (hself.callCabal2nix "unparse-attoparsec" 
+                        (
+                          fetchGit
+                          { url = "https://github.com/Lysxia/unparse-attoparsec.git";
+                            ref = "master";
+                          }
+                        )
+                        {}
+                      );
+                  })
 
                   (hself: hsuper: { writ = hself.callCabal2nix "writ" ./. {}; })
                 ];

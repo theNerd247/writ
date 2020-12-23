@@ -12,11 +12,13 @@ library
   default-extensions:
       GeneralizedNewtypeDeriving
     , TemplateHaskell
+    , FlexibleContexts
+    , RankNTypes
   build-depends:
       base 
     , containers
     , lens
-    , fresnel
+    , unparse-attoparsec
   default-language: Haskell2010
 
 test-suite test
