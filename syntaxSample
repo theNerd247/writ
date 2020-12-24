@@ -7,45 +7,139 @@ content. They are "templates-on-the-go".
 
 {f = ... =>
 
-| This is a pattern declaration. This
-| extends the function's variables
+% This is a comment
+
+% This is a pattern declaration. This
+% extends the function's variables
 
 ## {title = lorem ipsum}
 
 as;dfkja ;jasdf; kj;
 
 {reasons =
+
   * asdf 
   * asdf 
   * asdf 
   * asdf 
 }
 
-There are {|reasons|} examples in as;dkfj;asdf
+There are {2*|reasons| - 1} examples in as;dkfj;asdf
 
-{numbered reasons}
+{print {reasons}}
 
 brings us to
 
-look at the first item in the list: {reaons.1}
+look at the first item in the list: {reasons.1}
 }
 
-===> 
+{f
+  $1$
+  (lorem ipsum)
 
-{f = title reasons => ...}
-{f $ lorem ipsum $ b[asdf, ...]}
+  $2$
+  ($g [basdf, ...])
+}
 
 A smaller example is: 
 
-{f = ... => we are {attr = fun}}
-{f $ jazz}
-{f $ jar}
-{f $ pot}
+{f = ... => I like {attr = ice cream}}
+{f $$ jazz}
+{f $$ jar}
+{f $$ pot}
+
+{someFunctionTakingATable
+
+$3$
+
+{f . g . h $$
+
+Inventore praesentium odio sint non. Optio cum velit maxime. Rerum veniam
+recusandae ullam corrupti consequatur incidunt tempore sit. Id minus reiciendis
+molestiae consequatur laborum.
+
+}
+
+
+
+$2$
+
+{table 
+
+  $header$
+
+  * Header1 
+  * Header 2 that is really long line that forces the next line to wrap 
+  * Header 3
+  
+  $rows$
+
+  * Deleniti quas est aliquid. Quos ad temporibus ea est perspiciatis maxime.
+  Quia ea et cupiditate omnis temporibus. Ut eveniet dolorum illum aut sit.
+  Consequatur quam quidem sed laudantium distinctio ad ratione. At nihil atque
+  sit sequi rerum consequatur sed nulla.
+
+  * Deleniti quas est aliquid. Quos ad temporibus ea est perspiciatis maxime.
+  Quia ea et cupiditate omnis temporibus. Ut eveniet dolorum illum aut sit.
+  Consequatur quam quidem sed laudantium distinctio ad ratione. At nihil atque
+  sit sequi rerum consequatur sed nulla.
+
+  * Deleniti quas est aliquid. Quos ad temporibus ea est perspiciatis maxime.
+  Quia ea et cupiditate omnis temporibus. Ut eveniet dolorum illum aut sit.
+  Consequatur quam quidem sed laudantium distinctio ad ratione. At nihil atque
+  sit sequi rerum consequatur sed nulla.
+
+  ;
+
+  * Deleniti quas est aliquid. Quos ad temporibus ea est perspiciatis maxime.
+  Quia ea et cupiditate omnis temporibus. Ut eveniet dolorum illum aut sit.
+  Consequatur quam quidem sed laudantium distinctio ad ratione. At nihil atque
+  sit sequi rerum consequatur sed nulla.
+
+  * Deleniti quas est aliquid. Quos ad temporibus ea est perspiciatis maxime.
+  Quia ea et cupiditate omnis temporibus. Ut eveniet dolorum illum aut sit.
+  Consequatur quam quidem sed laudantium distinctio ad ratione. At nihil atque
+  sit sequi rerum consequatur sed nulla.
+
+  * Deleniti quas est aliquid. Quos ad temporibus ea est perspiciatis maxime.
+  Quia ea et cupiditate omnis temporibus. Ut eveniet dolorum illum aut sit.
+  Consequatur quam quidem sed laudantium distinctio ad ratione. At nihil atque
+  sit sequi rerum consequatur sed nulla.
+
+  ;
+
+
+  * Deleniti quas est aliquid. Quos ad temporibus ea est perspiciatis maxime.
+  Quia ea et cupiditate omnis temporibus. Ut eveniet dolorum illum aut sit.
+  Consequatur quam quidem sed laudantium distinctio ad ratione. At nihil atque
+  sit sequi rerum consequatur sed nulla.
+
+  * Deleniti quas est aliquid. Quos ad temporibus ea est perspiciatis maxime.
+  Quia ea et cupiditate omnis temporibus. Ut eveniet dolorum illum aut sit.
+  Consequatur quam quidem sed laudantium distinctio ad ratione. At nihil atque
+  sit sequi rerum consequatur sed nulla.
+
+  * Deleniti quas est aliquid. Quos ad temporibus ea est perspiciatis maxime.
+  Quia ea et cupiditate omnis temporibus. Ut eveniet dolorum illum aut sit.
+  Consequatur quam quidem sed laudantium distinctio ad ratione. At nihil atque
+  sit sequi rerum consequatur sed nulla.
+}
+
+$1$
+
+And other content like a code block with its contents coming from a variable:
+
+```
+{a variable}
+```
+
+}
+
 
 Function's Can Be Order-Called or Dict-Called
 =============================================
 
-{f = ... => ## {title = adf}\n\n {reasons = * adf; * asdf; * asdf; }}
+{f = ... => ## {title = adf}\n\n {reasons = [asdf, asdf, asdf] }}
 
 {f $ 
 
@@ -62,7 +156,8 @@ $
 }
 
 
-{f 
+```
+\{f 
 
 $reasons$
 
@@ -76,6 +171,7 @@ this is areallllly long paragrphaa
 asdf;kajf
 as;dfj
 
-}
+\}
+```
 
 is also valid
