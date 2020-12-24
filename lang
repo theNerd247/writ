@@ -9,6 +9,8 @@ around them. This is because strings are the center piece of what users would
 write and so it would be annoying to have to keep track of quotes all the time.
 * Variables are limited to their nearest lambda otherwise
   it is globally scoped.
+* Users already familiar with markdown should be easily able to pick up the
+  language.
 
 Key features:
 
@@ -49,7 +51,27 @@ E
 T 
   = TODO: define type language that enforces a non-turring completeness.
 
-Syntax:
+Parser Notes
+============
+
+* Parse `${ }` statements as code - everything else
+is a string and can be passed to the 
+
+1. Parse code `Parser (Expr Text)`
+1. Parse blocks `Parser (Expr (Parser (Blocks Text)))`
+1. Parse else `Parser (Expr (Parser (Blocks (Parser Inlines))))`
+
+  do
+
+parseExprs >>= parseBlocks >>= parseInlines
+
+parseExprs   :: Text -> ParserT Expr Text
+parseBlocks  :: Text -> ParserT Expr Text
+parseInlines :: Text -> ParserT Expr ()
+
+
+Syntax
+======
 
 <contents> = <content><contents>
 

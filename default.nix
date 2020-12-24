@@ -7,19 +7,6 @@ let
             (hOld: {
               overrides = builtins.foldl' super.lib.composeExtensions (hOld.overrides or (_: _: {}))
                 [
-                  (hself: hsuper: { unparse-attoparsec = with self.haskell.lib;
-                    (x: doJailbreak (dontCheck x))
-                      (hself.callCabal2nix "unparse-attoparsec" 
-                        (
-                          fetchGit
-                          { url = "https://github.com/Lysxia/unparse-attoparsec.git";
-                            ref = "master";
-                          }
-                        )
-                        {}
-                      );
-                  })
-
                   (hself: hsuper: { writ = hself.callCabal2nix "writ" ./. {}; })
                 ];
             });

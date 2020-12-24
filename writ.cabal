@@ -8,17 +8,24 @@ library
   hs-source-dirs: src
   ghc-options: -Wextra -rtsopts -O2
   exposed-modules:
-    Parser
+      Parser
+    , AST
   default-extensions:
       GeneralizedNewtypeDeriving
     , TemplateHaskell
     , FlexibleContexts
     , RankNTypes
+    , NoImplicitPrelude
+    , OverloadedStrings
+    , TypeFamilies
   build-depends:
       base 
+    , bytestring
     , containers
     , lens
-    , unparse-attoparsec
+    , megaparsec
+    , relude
+    , text
   default-language: Haskell2010
 
 test-suite test
