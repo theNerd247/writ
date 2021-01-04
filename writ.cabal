@@ -8,16 +8,27 @@ library
   hs-source-dirs: src
   ghc-options: -Wextra -rtsopts -O2
   exposed-modules:
-      Parser
-    , AST
+      AST
+    , Parser
+    , Eval
   default-extensions:
-      GeneralizedNewtypeDeriving
-    , TemplateHaskell
+      DataKinds
+    , DeriveGeneric
     , FlexibleContexts
-    , RankNTypes
+    , FlexibleInstances
+    , GADTs
+    , GeneralizedNewtypeDeriving
+    , LambdaCase
+    , MultiParamTypeClasses
     , NoImplicitPrelude
     , OverloadedStrings
+    , PolyKinds
+    , RankNTypes
+    , ScopedTypeVariables
+    , TemplateHaskell
+    , TypeApplications
     , TypeFamilies
+    , TypeOperators
   build-depends:
       base 
     , bytestring
@@ -26,6 +37,8 @@ library
     , megaparsec
     , relude
     , text
+    , polysemy
+    , polysemy-plugin
   default-language: Haskell2010
 
 test-suite test
