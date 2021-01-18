@@ -3,8 +3,8 @@ module AST where
 import Relude hiding (Type, TVar)
 import Control.Monad.Free (Free (..))
 import Data.Functor.Foldable.TH
-import Data.Functor.Foldable (cata, ghylo, distCata, distFutu)
-import Data.Functor.Identity (runIdentity)
+import Data.Functor.Foldable (cata, ghylo, distPara, distFutu, embed)
+import GHC.Show
 
 data Literal
   -- | Values 
@@ -37,6 +37,9 @@ data Term
 
 makeBaseFunctor ''Term
 
+instance (Show a) => Show (TermF a) where
+  show = const "<notshowable>"
+
 data TypeCheckError a
   = BoxHasNoType
   | InvalidRuleFor a a
@@ -45,6 +48,7 @@ data TypeCheckError a
   | VarNotFound Natural
   | ReconstructionNotImplemented
   | ArgTypeDoesNotMatch a a
+  | WithTyping (TypeCheckError a) (Typing a)
   deriving (Show)
 
 -- | Functor containing language used for type-inference algorith
@@ -58,6 +62,7 @@ data Typing term
   | ResTypeOfEquivArgPiType (Typing term) (Typing term) 
   | Substitute term (Typing term) 
   | AlreadyTyped term
+  deriving (Show)
 
 makeBaseFunctor ''Typing
 
@@ -70,7 +75,15 @@ data Ctx = Extend
 makeBaseFunctor ''Ctx
 
 typeCheck :: Term -> Either (TypeCheckError Term) Term
-typeCheck = ($EmptyCtx) . ghylo distCata distFutu (fromTyping . fmap runIdentity) toTyping
+typeCheck = ($EmptyCtx) . ghylo distPara distFutu (debugging fromTyping) toTyping
+
+debugging :: (x ~ (t -> Either (TypeCheckError a) r))
+  => (TypingF a b1 -> x)
+  -> TypingF a (Typing a, b1) -> x
+debugging alg x ctx = case alg (snd <$> x) ctx of
+  Left err -> Left $ WithTyping err $ embed $ fst <$> x
+  Right r  -> Right r
+
 
 fromTyping :: (r ~ (Ctx -> Either (TypeCheckError Term) Term)) => TypingF Term r -> r
 fromTyping (AlreadyTypedF term)
