@@ -47,8 +47,7 @@ data TypeCheckError a
   | ArgTypeDoesNotMatch a a
   deriving (Show)
 
--- Functor describing actions to perform while computing the type
--- of a term. This describes the main elements of type checking.
+-- | Functor containing language used for type-inference algorith
 data Typing term
   = LitType Literal
   | Lookup Natural
@@ -119,11 +118,11 @@ isPiTypeAndArgsBetaEquiv _  t
 
 -- | TODO: implement
 betaEquiv :: Term -> Term -> Bool
-betaEquiv = undefined
+betaEquiv _ _ = True
 
 -- | TODO: implement
 substitute :: Term -> Term -> Term
-substitute argTerm bodyTerm = bodyTerm
+substitute _ bodyTerm = bodyTerm
 
 toTyping :: Term -> TypingF Term (Free (TypingF Term) Term) 
 toTyping (Lit l)
@@ -155,12 +154,6 @@ typeOfLit Box
   = Left $ BoxHasNoType
  
 pureTypeSysSelector :: Term -> Term -> Either (TypeCheckError Term) Term
--- enable abstraction at term label
 pureTypeSysSelector (Lit Star) (Lit Star) = return . Lit $ Star
--- enable abstraction at type level
 pureTypeSysSelector (Lit Box) (Lit Box) = return . Lit $ Box
 pureTypeSysSelector x y = Left $ InvalidRuleFor x y
--- 
--- filterPiType :: Members '[Error (TypeCheckError (TermF a))] r => TermF a -> Sem r (a, a)
--- filterPiType (Pi a b) = return (a, b)
--- filterPiType x        = throw $ IsNotPiType x
