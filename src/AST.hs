@@ -3,7 +3,8 @@ module AST where
 import Relude hiding (Type, TVar)
 import Control.Monad.Free (Free (..))
 import Data.Functor.Foldable.TH
-import Data.Functor.Foldable (cata)
+import Data.Functor.Foldable (cata, ghylo, distCata, distFutu)
+import Data.Functor.Identity (runIdentity)
 
 data Literal
   -- | Values 
@@ -68,6 +69,9 @@ data Ctx = Extend
   | EmptyCtx
 
 makeBaseFunctor ''Ctx
+
+typeCheck :: Term -> Either (TypeCheckError Term) Term
+typeCheck = ($EmptyCtx) . ghylo distCata distFutu (fromTyping . fmap runIdentity) toTyping
 
 fromTyping :: (r ~ (Ctx -> Either (TypeCheckError Term) Term)) => TypingF Term r -> r
 fromTyping (AlreadyTypedF term)
