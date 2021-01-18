@@ -1,28 +1,9 @@
 module AST where
 
 import Relude hiding (Type, TVar)
-import Control.Lens
-import Polysemy
-import Polysemy.Error
-import Control.Arrow ((***), Kleisli (..))
-
-data Term
-  -- | Literals (a.k.a value and type primitives)
-  = Lit Literal 
-  -- | Variables
-  | Var VarIndex
-  -- | Abstraction of variables in terms (using de Bruine indices)
-  -- For example \x : Int. x
-  | Lam Term Term
-  -- | Application of an abstraction
-  | App Term Term
-  -- | Quantification (types of functions from values of type to values of type)
-  -- For example. the term (\a : *.\x : a.x) : Pi * (Pi 0 0) 
-  | Pi Term Term
-  deriving (Show)
-
-instance Eq Term where
-  (==) = undefined
+import Control.Monad.Free (Free (..))
+import Data.Functor.Foldable.TH
+import Data.Functor.Foldable (cata)
 
 data Literal
   -- | Values 
@@ -38,67 +19,128 @@ data Literal
 newtype VarIndex = VarIndex { _varIndex :: Natural }
   deriving (Show)
 
-makeLenses ''VarIndex
-makeWrapped ''VarIndex
-
-data VarCtx x m a where
-  Pushed :: x -> m a -> VarCtx x m a
-  Lookup :: Natural -> VarCtx x m x
-
-makeSem ''VarCtx
-
-data TypeCheckError 
-  = BoxHasNoType
-  | InvalidRuleFor Literal Literal
-  | IsNotPiType Term 
-  | TypesNotEquivalent Term Term Term
-  | IsNotLitType Term
+data Term 
+  -- | Literals (a.k.a value and type primitives)
+  = Lit Literal 
+  -- | Variables
+  | Var VarIndex
+  -- | Abstraction of variables in terms (using de Bruine indices)
+  -- For example \x : Int. x
+  | Lam Term Term
+  -- | Application of an abstraction
+  | App Term Term
+  -- | Quantification (types of functions from values of type to values of type)
+  -- For example. the term (\a : *.\x : a.x) : Pi * (Pi 0 0) 
+  | Pi Term Term
   deriving (Show)
 
-typeOf :: Members '[VarCtx Term, Error TypeCheckError] r => Term -> Sem r Term
-typeOf (Lit x)     
-  = Lit <$> typeOfLit x
-typeOf (Var i)     
-  = lookup $ i^._Wrapped
-typeOf (App potentialLambda arg)
-  = 
-    isPiType potentialLambda 
-    >>= uncurry (>>) . (argsTypeMatches arg *** substituteWith arg)
-typeOf (Lam varType bodyExpr) 
-  = (pushed varType $ typeOf bodyExpr) >>= constructPiType varType
-typeOf (Pi argType resType) 
-  = join $
-    lambdaCubeSelection
-    <$> (typeOf argType >>= isLitType) 
-    <*> (pushed argType (typeOf resType) >>= isLitType)
+makeBaseFunctor ''Term
 
+data TypeCheckError a
+  = BoxHasNoType
+  | InvalidRuleFor a a
+  | IsNotPiType a
+  | IsNotLitType a
+  | VarNotFound Natural
+  | ReconstructionNotImplemented
+  | ArgTypeDoesNotMatch a a
+  deriving (Show)
 
-substituteWith :: Members '[VarCtx Term] r => Term -> Term -> Sem r Term
-substituteWith = undefined
+-- Functor describing actions to perform while computing the type
+-- of a term. This describes the main elements of type checking.
+data Typing term
+  = LitType Literal
+  | Lookup Natural
+  | ExtendCtx term (Typing term) 
+  | Reconsruct (TermF (Typing term)) (Typing term) 
+  | PTSSelect (Typing term) (Typing term) 
+  | WHNType (Typing term) 
+  | ResTypeOfEquivArgPiType (Typing term) (Typing term) 
+  | Substitute term (Typing term) 
+  | AlreadyTyped term
 
-constructPiType :: Members '[VarCtx Term, Error TypeCheckError] r => Term -> Term -> Sem r Term
-constructPiType varType resType =
-  typeOf p >> return p
-    where 
-      p = Pi varType resType
+makeBaseFunctor ''Typing
 
-isPiType :: Members '[VarCtx Term, Error TypeCheckError] r => Term -> Sem r (Term, Term)
-isPiType t = typeOf t >>= \case 
-  Pi a b -> return (a,b)
-  _      -> throw $ IsNotPiType t
+data Ctx = Extend 
+  { elem :: Term
+  , env :: Ctx
+  }
+  | EmptyCtx
 
-isLitType :: Members '[VarCtx Term, Error TypeCheckError] r => Term -> Sem r Literal
-isLitType (Lit x) = return $ x
-isLitType x = throw $ IsNotLitType x
+makeBaseFunctor ''Ctx
 
-argsTypeMatches :: Members '[VarCtx Term, Error TypeCheckError] r => Term -> Term -> Sem r ()
-argsTypeMatches arg _type = do
-  argType <- typeOf arg 
-  case argType == _type of
-    True -> return ()
-    False -> throw $ TypesNotEquivalent arg argType _type
+fromTyping :: (r ~ (Ctx -> Either (TypeCheckError Term) Term)) => TypingF Term r -> r
+fromTyping (AlreadyTypedF term)
+  = pure . pure $ term
+fromTyping (ReconsructF termF typ)
+  = (>>) <$> typ <*> reconstruct termF
+fromTyping (LitTypeF l)
+  = pure $ Lit <$> typeOfLit l
+fromTyping (LookupF i)
+  = findVar i
+fromTyping (ExtendCtxF elem typ)
+  = typ . (Extend elem) 
+fromTyping (PTSSelectF sType tType)
+  = join <$> (liftA2 . liftA2) pureTypeSysSelector sType tType 
+fromTyping (WHNTypeF typ)
+  = (fmap . fmap) toWHNF typ
+fromTyping (ResTypeOfEquivArgPiTypeF argType resType)
+  = join <$> (liftA2 . liftA2) isPiTypeAndArgsBetaEquiv argType resType
+fromTyping (SubstituteF argTerm bodyTerm)
+  = (fmap . fmap) (substitute argTerm) bodyTerm
 
-typeOfLit :: Members '[VarCtx Term, Error TypeCheckError] r => Literal -> Sem r Literal
+findVar :: Natural -> Ctx -> Either (TypeCheckError Term) Term
+findVar i = cata alg i
+  where
+    alg :: r ~ (Ctx -> Either (TypeCheckError Term) Term) => Maybe r -> r
+    alg Nothing EmptyCtx   = Left $ VarNotFound i
+    alg Nothing (Extend{..})  = Right elem
+    alg (Just f) (Extend{..}) = f env
+    alg (Just f) EmptyCtx     = f EmptyCtx
+
+reconstruct :: r ~ (Ctx -> Either (TypeCheckError Term) Term) => TermF r -> r 
+reconstruct (PiF argType resType) = (liftA2 . liftA2) Pi argType resType
+reconstruct _ = pure $ Left $ ReconstructionNotImplemented
+
+-- | TODO: implement 
+toWHNF :: Term -> Term
+toWHNF x = x
+
+isPiTypeAndArgsBetaEquiv :: Term -> Term -> Either (TypeCheckError Term) Term
+isPiTypeAndArgsBetaEquiv argType t@(Pi argType' resType)
+  | argType `betaEquiv` argType' = Right resType
+  | otherwise                    = Left $ ArgTypeDoesNotMatch argType t
+isPiTypeAndArgsBetaEquiv _  t 
+  = Left $ IsNotPiType t
+
+-- | TODO: implement
+betaEquiv :: Term -> Term -> Bool
+betaEquiv = undefined
+
+-- | TODO: implement
+substitute :: Term -> Term -> Term
+substitute argTerm bodyTerm = bodyTerm
+
+toTyping :: Term -> TypingF Term (Free (TypingF Term) Term) 
+toTyping (Lit l)
+  = LitTypeF l
+toTyping (Var (VarIndex i))
+  = LookupF i
+toTyping (Lam argType bodyExpr)
+  = ReconsructF reconstructedPiType $ Free $ piTyping argType bodyTyping
+    where
+      reconstructedPiType = PiF (Free $ AlreadyTypedF argType) bodyTyping
+      bodyTyping = Free $ ExtendCtxF argType $ Pure bodyExpr
+toTyping (App fExpr aExpr)
+  = SubstituteF aExpr $ Free $ ResTypeOfEquivArgPiTypeF (Pure aExpr) $ Free $ WHNTypeF (Pure fExpr)
+toTyping (Pi argType resType)
+  = piTyping argType $ Pure resType
+
+piTyping :: a ~ (Free (TypingF Term) Term) => Term -> a -> TypingF Term a
+piTyping argType resType =
+  PTSSelectF (Free $ WHNTypeF $ Pure argType) (Free $ WHNTypeF $ Free $ ExtendCtxF argType resType)
+
+typeOfLit :: Literal -> Either (TypeCheckError a) Literal
 typeOfLit (BoolV _) 
   = return BoolT
 typeOfLit BoolT 
@@ -106,11 +148,15 @@ typeOfLit BoolT
 typeOfLit Star
   = return Box
 typeOfLit Box
-  = throw BoxHasNoType
-
-lambdaCubeSelection :: Members '[Error TypeCheckError] r => Literal -> Literal -> Sem r Term
+  = Left $ BoxHasNoType
+ 
+pureTypeSysSelector :: Term -> Term -> Either (TypeCheckError Term) Term
 -- enable abstraction at term label
-lambdaCubeSelection Star Star = pure . Lit $ Star
+pureTypeSysSelector (Lit Star) (Lit Star) = return . Lit $ Star
 -- enable abstraction at type level
-lambdaCubeSelection Box Box = pure . Lit $ Box
-lambdaCubeSelection x y = throw $ InvalidRuleFor x y
+pureTypeSysSelector (Lit Box) (Lit Box) = return . Lit $ Box
+pureTypeSysSelector x y = Left $ InvalidRuleFor x y
+-- 
+-- filterPiType :: Members '[Error (TypeCheckError (TermF a))] r => TermF a -> Sem r (a, a)
+-- filterPiType (Pi a b) = return (a, b)
+-- filterPiType x        = throw $ IsNotPiType x
