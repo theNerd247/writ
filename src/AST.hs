@@ -62,7 +62,7 @@ data Typing term
   = LitType Literal
   | Lookup Natural
   | ExtendCtx term (Typing term) 
-  | Reconsruct (TermF (Typing term)) (Typing term) 
+  | LamType term (Typing term) 
   | PTSSelect (Typing term) (Typing term) 
   | WHNFKind (Typing term) 
   | ResTypeOfEquivArgPiType (Typing term) (Typing term) 
@@ -100,8 +100,13 @@ debugging alg x ctx = case alg (snd <$> x) ctx of
 fromTyping :: (r ~ (Ctx -> Either (TypeCheckError Term) Term)) => TypingF Term r -> r
 fromTyping (AlreadyTypedF term)
   = pure . pure $ term
-fromTyping (ReconsructF termF typ)
-  = (>>) <$> typ <*> reconstruct termF
+fromTyping (LamTypeF argType bodyType)
+  -- | TODO: I feel this is a hack and there should be a way to rid us of using a recursive
+  -- call within the algebra side of the hylo morphism.
+  = \ctx -> do 
+    b <- bodyType ctx
+    let p = Pi argType b
+    typeCheck' ctx p >> return p
 fromTyping (LitTypeF l)
   = pure $ Lit <$> typeOfLit l
 fromTyping (LookupF i)
@@ -111,7 +116,7 @@ fromTyping (ExtendCtxF elem typ)
 fromTyping (PTSSelectF sType tType)
   = join <$> (liftA2 . liftA2) pureTypeSysSelector sType tType 
 fromTyping (WHNFKindF typ)
-  = \ctx -> typ ctx >>= typeCheck' ctx >>= return . toWHNF
+  = (fmap . fmap) toWHNF typ
 fromTyping (ResTypeOfEquivArgPiTypeF argType resType)
   = join <$> (liftA2 . liftA2) isPiTypeAndArgsBetaEquiv argType resType
 fromTyping (SubstituteF argTerm bodyTerm)
@@ -155,18 +160,11 @@ toTyping (Lit l)
 toTyping (Var (VarIndex i))
   = LookupF i
 toTyping (Lam argType bodyExpr)
-  = ReconsructF reconstructedPiType $ Free $ piTyping argType bodyTyping
-    where
-      reconstructedPiType = PiF (Free $ AlreadyTypedF argType) bodyTyping
-      bodyTyping = Free $ ExtendCtxF argType $ Pure bodyExpr
+  = LamTypeF argType $ Free $ ExtendCtxF argType $ Pure bodyExpr
 toTyping (App fExpr aExpr)
   = SubstituteF aExpr $ Free $ ResTypeOfEquivArgPiTypeF (Pure aExpr) $ Free $ WHNFKindF (Pure fExpr)
 toTyping (Pi argType resType)
-  = piTyping argType $ Pure resType
-
-piTyping :: a ~ (Free (TypingF Term) Term) => Term -> a -> TypingF Term a
-piTyping argType resType =
-  PTSSelectF (Free $ WHNFKindF $ Free $ AlreadyTypedF argType) (Free $ WHNFKindF $ Free $ ExtendCtxF argType resType)
+  = PTSSelectF (Free $ WHNFKindF $ Pure argType) (Free $ WHNFKindF $ Free $ ExtendCtxF argType $ Pure resType)
 
 typeOfLit :: Literal -> Either (TypeCheckError a) Literal
 typeOfLit (BoolV _) 
@@ -181,5 +179,5 @@ typeOfLit Box
 pureTypeSysSelector :: Term -> Term -> Either (TypeCheckError Term) Term
 pureTypeSysSelector (Lit Star) (Lit Star) = return . Lit $ Star
 pureTypeSysSelector (Lit Box)  (Lit Star) = Left $ TypePolymorphismNotSupported
-pureTypeSysSelector (Lit Box) (Lit Box) = return . Lit $ Box
+pureTypeSysSelector (Lit Box) (Lit Box)   = return . Lit $ Box
 pureTypeSysSelector x y = Left $ InvalidRuleFor x y
