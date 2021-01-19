@@ -1,9 +1,10 @@
 module AST where
 
-import Relude hiding (Type, TVar)
+import Relude hiding (Type, TVar, show)
 import Control.Monad.Free (Free (..))
 import Data.Functor.Foldable.TH
-import Data.Functor.Foldable (cata, ghylo, distPara, distFutu, embed)
+import Data.Functor.Foldable (cata, ghylo, distPara, distCata, distFutu, embed)
+import Data.Functor.Identity (runIdentity)
 import GHC.Show
 
 data Literal
@@ -38,7 +39,11 @@ data Term
 makeBaseFunctor ''Term
 
 instance (Show a) => Show (TermF a) where
-  show = const "<notshowable>"
+  show (LitF l)   = show l 
+  show (VarF i)   = show i
+  show (LamF a b) = "(Lam (" <> show a <> ") (" <> show b <> "))" 
+  show (AppF f a) = "(App (" <> show f <> ") (" <> show a <> "))"
+  show (PiF a b)  = "(Pi  (" <> show a <> ") (" <> show b <> "))" 
 
 data TypeCheckError a
   = BoxHasNoType
@@ -49,6 +54,7 @@ data TypeCheckError a
   | ReconstructionNotImplemented
   | ArgTypeDoesNotMatch a a
   | WithTyping (TypeCheckError a) (Typing a)
+  | TypePolymorphismNotSupported
   deriving (Show)
 
 -- | Functor containing language used for type-inference algorith
@@ -58,7 +64,7 @@ data Typing term
   | ExtendCtx term (Typing term) 
   | Reconsruct (TermF (Typing term)) (Typing term) 
   | PTSSelect (Typing term) (Typing term) 
-  | WHNType (Typing term) 
+  | WHNFKind (Typing term) 
   | ResTypeOfEquivArgPiType (Typing term) (Typing term) 
   | Substitute term (Typing term) 
   | AlreadyTyped term
@@ -75,15 +81,21 @@ data Ctx = Extend
 makeBaseFunctor ''Ctx
 
 typeCheck :: Term -> Either (TypeCheckError Term) Term
-typeCheck = ($EmptyCtx) . ghylo distPara distFutu (debugging fromTyping) toTyping
+typeCheck = typeCheck' EmptyCtx
+
+typeCheck' :: Ctx -> Term -> Either (TypeCheckError Term) Term
+typeCheck' ctx term = ghylo distPara distFutu (debugging fromTyping) toTyping term ctx
 
 debugging :: (x ~ (t -> Either (TypeCheckError a) r))
   => (TypingF a b1 -> x)
   -> TypingF a (Typing a, b1) -> x
 debugging alg x ctx = case alg (snd <$> x) ctx of
-  Left err -> Left $ WithTyping err $ embed $ fst <$> x
-  Right r  -> Right r
-
+  Left (WithTyping err _) 
+    -> Left $ WithTyping err $ embed $ fst <$> x
+  Left err 
+    -> Left $ WithTyping err $ embed $ fst <$> x
+  Right r  
+    -> Right r
 
 fromTyping :: (r ~ (Ctx -> Either (TypeCheckError Term) Term)) => TypingF Term r -> r
 fromTyping (AlreadyTypedF term)
@@ -98,8 +110,8 @@ fromTyping (ExtendCtxF elem typ)
   = typ . (Extend elem) 
 fromTyping (PTSSelectF sType tType)
   = join <$> (liftA2 . liftA2) pureTypeSysSelector sType tType 
-fromTyping (WHNTypeF typ)
-  = (fmap . fmap) toWHNF typ
+fromTyping (WHNFKindF typ)
+  = \ctx -> typ ctx >>= typeCheck' ctx >>= return . toWHNF
 fromTyping (ResTypeOfEquivArgPiTypeF argType resType)
   = join <$> (liftA2 . liftA2) isPiTypeAndArgsBetaEquiv argType resType
 fromTyping (SubstituteF argTerm bodyTerm)
@@ -148,13 +160,13 @@ toTyping (Lam argType bodyExpr)
       reconstructedPiType = PiF (Free $ AlreadyTypedF argType) bodyTyping
       bodyTyping = Free $ ExtendCtxF argType $ Pure bodyExpr
 toTyping (App fExpr aExpr)
-  = SubstituteF aExpr $ Free $ ResTypeOfEquivArgPiTypeF (Pure aExpr) $ Free $ WHNTypeF (Pure fExpr)
+  = SubstituteF aExpr $ Free $ ResTypeOfEquivArgPiTypeF (Pure aExpr) $ Free $ WHNFKindF (Pure fExpr)
 toTyping (Pi argType resType)
   = piTyping argType $ Pure resType
 
 piTyping :: a ~ (Free (TypingF Term) Term) => Term -> a -> TypingF Term a
 piTyping argType resType =
-  PTSSelectF (Free $ WHNTypeF $ Pure argType) (Free $ WHNTypeF $ Free $ ExtendCtxF argType resType)
+  PTSSelectF (Free $ WHNFKindF $ Free $ AlreadyTypedF argType) (Free $ WHNFKindF $ Free $ ExtendCtxF argType resType)
 
 typeOfLit :: Literal -> Either (TypeCheckError a) Literal
 typeOfLit (BoolV _) 
@@ -168,5 +180,6 @@ typeOfLit Box
  
 pureTypeSysSelector :: Term -> Term -> Either (TypeCheckError Term) Term
 pureTypeSysSelector (Lit Star) (Lit Star) = return . Lit $ Star
+pureTypeSysSelector (Lit Box)  (Lit Star) = Left $ TypePolymorphismNotSupported
 pureTypeSysSelector (Lit Box) (Lit Box) = return . Lit $ Box
 pureTypeSysSelector x y = Left $ InvalidRuleFor x y
