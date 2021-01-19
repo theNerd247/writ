@@ -9,12 +9,13 @@ import GHC.Show
 
 data Literal
   -- | Values 
-  = BoolV Bool
-  -- | Types
+  = BoolV !Bool
   | BoolT
-  -- | Constant for type of types (kinds)
+  | NumV !Double
+  | NumT
+  | TextV !Text
+  | TextT
   | Star
-  -- | Constat for type of kinds
   | Box
   deriving (Show)
 
@@ -34,6 +35,11 @@ data Term
   -- | Quantification (types of functions from values of type to values of type)
   -- For example. the term (\a : *.\x : a.x) : Pi * (Pi 0 0) 
   | Pi Term Term
+  -- | Syntax sugar
+  | Let !Text Term
+  | Sum [Term]
+  | Prod [Term]
+  | List [Term]
   deriving (Show)
 
 makeBaseFunctor ''Term
